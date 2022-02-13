@@ -367,6 +367,15 @@ class AssScript(object):
             (EVENTS_SECTION, events_section),
         ])
 
+    def to_ass_string(self):
+        lines = []
+        for name, section in self._sections_list:
+            lines.append(name)
+            lines.extend(section.format_section())
+            lines.append(u"")
+
+        return "\n".join(lines)
+
     def to_ass_stream(self, file_object):
         lines = []
         for name, section in self._sections_list:
