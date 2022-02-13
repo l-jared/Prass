@@ -288,6 +288,48 @@ class AssScript(object):
         return next((section for section_name, section in self._sections_list if section_name == name), None)
 
     @classmethod
+    def from_string(cls, text):
+        sections = []
+        current_section = None
+        force_last_section = False
+        for idx, line in enumerate(text.splitlines()):
+            line = line.strip()
+            # required because a line might be both a part of an attachment and a valid header
+            if force_last_section:
+                try:
+                    force_last_section = current_section.parse_line(line)
+                    continue
+                except Exception as e:
+                    raise PrassError(u"That's some invalid ASS script: {0}".format(e.message))
+
+            if not line:
+                continue
+            low = line.lower()
+            if low == u'[v4+ styles]':
+                current_section = StylesSection()
+                sections.append((line, current_section))
+            elif low == u'[events]':
+                current_section = EventsSection()
+                sections.append((line, current_section))
+            elif low == u'[script info]':
+                current_section = ScriptInfoSection()
+                sections.append((line, current_section))
+            elif low == u'[graphics]' or low == u'[fonts]':
+                current_section = AttachmentSection()
+                sections.append((line, current_section))
+            elif re.match(r'^\s*\[.+?\]\s*$', low):
+                current_section = GenericSection()
+                sections.append((line, current_section))
+            elif not current_section:
+                raise PrassError(u"That's some invalid ASS script (no parse function at line {0})".format(idx))
+            else:
+                try:
+                    force_last_section = current_section.parse_line(line)
+                except Exception as e:
+                    raise PrassError(u"That's some invalid ASS script: {0}".format(e.message))
+        return cls(sections)
+
+    @classmethod
     def from_ass_stream(cls, file_object):
         sections = []
         current_section = None
